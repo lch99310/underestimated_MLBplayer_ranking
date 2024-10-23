@@ -29,9 +29,9 @@ def plot_baseball_stats_final(data):
     
     # Plot rolling statistics in top subplot
     ax1.plot(data['PA_number'], data['rolling_100PA_xwOBA'], 
-             color='black', label='Rolling xwOBA (100PAs)', linewidth=2)
+             color='black', label='Rolling xwOBA (100PAs)', linewidth=1, alpha=0.6)
     ax1.plot(data['PA_number'], data['rolling_100PA_wOBA'], 
-             color='#2775B6', label='Rolling wOBA (100PAs)', linewidth=2, alpha=0.6)
+             color='#2775B6', label='Rolling wOBA (100PAs)', linewidth=2)
     
     # Customize top subplot
     ax1.set_title(player_name, pad=20)
@@ -44,39 +44,45 @@ def plot_baseball_stats_final(data):
     ax1.set_yticks(np.arange(0.000, 0.901, 0.100))
     ax1.yaxis.set_major_formatter(plt.FormatStrFormatter('%.3f'))
     
-    # Plot diff_OBA bars in bottom subplot
-    pos_mask = data['diff_OBA'] >= 0
-    neg_mask = data['diff_OBA'] < 0
+    # Plot diff_rolling_OBA bars in bottom subplot
+    pos_mask = data['diff_rolling_OBA'] >= 0
+    neg_mask = data['diff_rolling_OBA'] < 0
     
     ax2.bar(data.loc[pos_mask, 'PA_number'], 
-            data.loc[pos_mask, 'diff_OBA'],
+            data.loc[pos_mask, 'diff_rolling_OBA'],
             color='red', alpha=0.6)
     ax2.bar(data.loc[neg_mask, 'PA_number'],
-            data.loc[neg_mask, 'diff_OBA'],
+            data.loc[neg_mask, 'diff_rolling_OBA'],
             color='green', alpha=0.6)
-    
-    # Plot rolling diff_OBA
-    ax2.plot(data['PA_number'], data['rolling_100PA_diff_OBA'], 
-             color='orange', alpha=0.8, linewidth=1.5)
     
     # Customize bottom subplot
     ax2.grid(True, alpha=0.3)
     ax2.set_xlabel('Plate Appearances')
     
-    # Add date range to bottom subplot
-    ax2.text(data['PA_number'].min(), -1.2, start_date, 
-             ha='left', va='top', rotation=45)
-    ax2.text(data['PA_number'].max(), -1.2, end_date, 
-             ha='right', va='top', rotation=45)
+    # Calculate the max absolute value for symmetric y-axis scaling
+    max_abs_value = max(abs(data['diff_rolling_OBA'].max()), abs(data['diff_rolling_OBA'].min()))
+    rounded_max = np.ceil(max_abs_value * 10) / 10  # Round up to nearest 0.1
     
-    # Set y-axis limits for bottom subplot
-    ax2.set_ylim(-1, 1)
+    # Set y-axis limits for bottom subplot to fit bars
+    ax2.set_ylim(-rounded_max, rounded_max)
     
     # Ensure x-axis limits are the same for both subplots
     ax1.set_xlim(data['PA_number'].min(), data['PA_number'].max())
     ax2.set_xlim(data['PA_number'].min(), data['PA_number'].max())
     
+    # Add date range to bottom subplot with extreme positions
     plt.tight_layout()
+    
+    # Get the figure coordinates
+    x_min = ax2.get_position().x0
+    x_max = ax2.get_position().x1
+    y_bottom = ax2.get_position().y0 - 0.05
+    
+    # Add dates at the extreme positions
+    fig.text(x_min, y_bottom, start_date, 
+            ha='left', va='top', rotation=45)
+    fig.text(x_max, y_bottom, end_date, 
+            ha='right', va='top', rotation=45)
     
     return fig
 

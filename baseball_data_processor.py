@@ -10,6 +10,7 @@ def process_baseball_data(file_path):
        - rolling diff_OBA
        - rolling xwOBA
        - rolling wOBA
+       - diff_rolling_OBA (rolling_xwOBA - rolling_wOBA)
     
     Args:
         file_path (str): Path to the CSV file containing baseball data
@@ -52,6 +53,9 @@ def process_baseball_data(file_path):
         # Calculate rolling wOBA
         group['rolling_100PA_wOBA'] = group['woba_value'].rolling(window=100, min_periods=1).mean()
         
+        # Calculate diff_rolling_OBA (difference between rolling xwOBA and rolling wOBA)
+        group['diff_rolling_OBA'] = group['rolling_100PA_xwOBA'] - group['rolling_100PA_wOBA']
+        
         return group
     
     # Apply rolling calculations for each batter
@@ -77,7 +81,7 @@ def main():
         for batter in processed_df[['batter', 'first_name', 'last_name']].drop_duplicates().values:
             print(f"ID: {batter[0]}, Name: {batter[1]} {batter[2]}")
             
-        # Display sample of rolling statistics for verification
+        # Display sample of rolling statistics for each batter
         print("\nSample of rolling statistics for each batter:")
         for batter in processed_df['batter'].unique():
             batter_name = f"{processed_df[processed_df['batter'] == batter]['first_name'].iloc[0]} {processed_df[processed_df['batter'] == batter]['last_name'].iloc[0]}"
@@ -86,6 +90,7 @@ def main():
             print(f"Latest rolling 100PA diff_OBA: {latest_stats['rolling_100PA_diff_OBA']:.3f}")
             print(f"Latest rolling 100PA xwOBA: {latest_stats['rolling_100PA_xwOBA']:.3f}")
             print(f"Latest rolling 100PA wOBA: {latest_stats['rolling_100PA_wOBA']:.3f}")
+            print(f"Latest diff_rolling_OBA: {latest_stats['diff_rolling_OBA']:.3f}")
         
         # Optional: Save the processed data to a new CSV file
         output_file = 'processed_baseball_stats.csv'

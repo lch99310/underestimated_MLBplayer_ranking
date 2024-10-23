@@ -1,3 +1,4 @@
+# baseball_workflow.py
 import os
 import pandas as pd
 from datetime import datetime
@@ -5,6 +6,8 @@ import argparse
 import logging
 from pathlib import Path
 import json
+import matplotlib
+matplotlib.use('Agg')  # Set non-interactive backend
 import matplotlib.pyplot as plt
 
 # Import the functions from other scripts
@@ -32,12 +35,27 @@ class BaseballDataWorkflow:
         )
         self.logger = logging.getLogger(__name__)
     
+    def validate_data(self, df, stage=""):
+        """Validate that DataFrame has required columns"""
+        required_columns = {
+            'raw': ['game_date', 'batter', 'estimated_woba_using_speedangle', 'woba_value', 'woba_denom'],
+            'processed': ['game_date', 'batter', 'first_name', 'last_name', 'estimated_woba_using_speedangle', 
+                         'woba_value', 'rolling_100PA_xwOBA', 'rolling_100PA_wOBA', 'diff_rolling_OBA']
+        }
+        
+        if stage in required_columns:
+            missing_cols = [col for col in required_columns[stage] if col not in df.columns]
+            if missing_cols:
+                raise ValueError(f"Missing required columns for {stage} data: {missing_cols}")
+    
     def fetch_data(self, start_date, end_date, force_refresh=False):
         """Fetch Statcast data for the specified date range"""
         output_file = self.raw_dir / f"statcast_{start_date}_to_{end_date}.csv"
         
         if output_file.exists() and not force_refresh:
             self.logger.info(f"Using existing data file: {output_file}")
+            data = pd.read_csv(output_file)
+            self.validate_data(data, "raw")
             return output_file
         
         self.logger.info(f"Fetching data from {start_date} to {end_date}")
@@ -45,6 +63,7 @@ class BaseballDataWorkflow:
         
         if not data.empty:
             data = add_player_names(data)
+            self.validate_data(data, "raw")
             data.to_csv(output_file, index=False)
             self.logger.info(f"Data saved to {output_file}")
             return output_file
@@ -59,6 +78,7 @@ class BaseballDataWorkflow:
         self.logger.info(f"Processing data from {input_file}")
         try:
             processed_df = process_baseball_data(input_file)
+            self.validate_data(processed_df, "processed")
             processed_df.to_csv(output_file, index=False)
             self.logger.info(f"Processed data saved to {output_file}")
             return output_file
@@ -72,6 +92,7 @@ class BaseballDataWorkflow:
         
         try:
             df = pd.read_csv(processed_file)
+            self.validate_data(df, "processed")
             player_groups = df.groupby('batter')
             
             for batter, player_data in player_groups:
@@ -82,9 +103,12 @@ class BaseballDataWorkflow:
                 fig = plot_baseball_stats_final(player_data)
                 fig.savefig(plot_file, dpi=300, bbox_inches='tight')
                 plt.close(fig)
-        
+                
+            self.logger.info("All plots generated successfully")
+            
         except Exception as e:
             self.logger.error(f"Error generating plots: {e}")
+            raise
 
 def main():
     """Main function to run the workflow"""
@@ -95,15 +119,20 @@ def main():
     
     args = parser.parse_args()
     
-    # Initialize and run workflow
-    workflow = BaseballDataWorkflow()
-    
-    # Execute workflow steps
-    raw_data_file = workflow.fetch_data(args.start_date, args.end_date, args.force_refresh)
-    if raw_data_file:
-        processed_file = workflow.process_data(raw_data_file)
-        if processed_file:
-            workflow.generate_plots(processed_file)
+    try:
+        # Initialize and run workflow
+        workflow = BaseballDataWorkflow()
+        
+        # Execute workflow steps
+        raw_data_file = workflow.fetch_data(args.start_date, args.end_date, args.force_refresh)
+        if raw_data_file:
+            processed_file = workflow.process_data(raw_data_file)
+            if processed_file:
+                workflow.generate_plots(processed_file)
+                
+    except Exception as e:
+        logging.error(f"Workflow failed: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main()

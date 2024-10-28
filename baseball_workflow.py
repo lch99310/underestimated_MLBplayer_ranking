@@ -1,7 +1,7 @@
 # baseball_workflow.py
 import os
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import argparse
 import logging
 from pathlib import Path
@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from get_daily_statcast_data import get_filtered_daily_statcast_data, add_player_names
 from baseball_data_processor import process_baseball_data
 from baseball_plotting import plot_baseball_stats_final
+from baseball_ranking import analyze_player_estimations
+from baseball_email_report import BaseballReportEmailer, MLBSeasonSchedule
 
 class BaseballDataWorkflow:
     def __init__(self):
@@ -22,9 +24,10 @@ class BaseballDataWorkflow:
         self.raw_dir = Path("data/raw")
         self.processed_dir = Path("data/processed")
         self.plots_dir = Path("data/plots")
+        self.rankings_dir = Path("data/rankings")
         
         # Create directories if they don't exist
-        for directory in [self.raw_dir, self.processed_dir, self.plots_dir]:
+        for directory in [self.raw_dir, self.processed_dir, self.plots_dir, self.rankings_dir]:
             directory.mkdir(parents=True, exist_ok=True)
         
         # Setup logging
@@ -34,6 +37,32 @@ class BaseballDataWorkflow:
             handlers=[logging.StreamHandler()]
         )
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize season schedule
+        self.season = MLBSeasonSchedule(datetime.now().year)
+        
+        # Email configuration (Mailtrap)
+        self.email_config = {
+            'smtp_server': 'sandbox.smtp.mailtrap.io',
+            'smtp_port': 2525,
+            'sender_email': '9536d3126ecfd3',
+            'sender_password': 'e94ea6948a9c57',
+            'recipients': ['lch99310@gmail.com']
+        }
+    
+    def validate_email_config(self):
+        """Validate email configuration"""
+        required_keys = ['smtp_server', 'smtp_port', 'sender_email', 
+                        'sender_password', 'recipients']
+        
+        missing_keys = [key for key in required_keys 
+                       if not self.email_config.get(key)]
+        
+        if missing_keys:
+            raise ValueError(f"Missing required email configuration: {missing_keys}")
+        
+        if not isinstance(self.email_config['recipients'], list):
+            raise ValueError("Recipients must be a list of email addresses")
     
     def validate_data(self, df, stage=""):
         """Validate that DataFrame has required columns"""
@@ -86,28 +115,83 @@ class BaseballDataWorkflow:
             self.logger.error(f"Error processing data: {e}")
             return None
     
-    def generate_plots(self, processed_file):
-        """Generate plots for each player"""
-        self.logger.info(f"Generating plots from {processed_file}")
-        
+    def analyze_rankings(self, processed_file):
+        """Analyze player rankings from processed data"""
+        self.logger.info(f"Analyzing player rankings from {processed_file}")
         try:
             df = pd.read_csv(processed_file)
-            self.validate_data(df, "processed")
-            player_groups = df.groupby('batter')
+            underestimated, overestimated = analyze_player_estimations(df)
+            return underestimated, overestimated
+        except Exception as e:
+            self.logger.error(f"Error analyzing rankings: {e}")
+            raise
+    
+    def prepare_email_report(self, processed_df, underestimated_players):
+        """Prepare data for email report"""
+        latest_date = underestimated_players['game_date'].max()
+        today_top_players = underestimated_players[
+            underestimated_players['game_date'] == latest_date
+        ].sort_values('rank')
+        
+        players_data = []
+        for _, row in today_top_players.iterrows():
+            player_df = processed_df[
+                (processed_df['first_name'] + ' ' + processed_df['last_name']) == row['player_name']
+            ].copy()
             
-            for batter, player_data in player_groups:
-                player_name = f"{player_data['first_name'].iloc[0]}_{player_data['last_name'].iloc[0]}"
-                plot_file = self.plots_dir / f"{player_name}_stats.png"
+            if not player_df.empty:
+                # Create plot
+                plot_bytes = BaseballReportEmailer(
+                    None, None, None, None
+                ).create_player_plot(player_df)
                 
-                self.logger.info(f"Generating plot for {player_name}")
-                fig = plot_baseball_stats_final(player_data)
-                fig.savefig(plot_file, dpi=300, bbox_inches='tight')
-                plt.close(fig)
-                
-            self.logger.info("All plots generated successfully")
+                players_data.append({
+                    'name': row['player_name'],
+                    'rolling_woba': player_df['rolling_100PA_wOBA'].iloc[-1],
+                    'diff_oba': row['diff_rolling_OBA'] / 100,  # Convert back from percentage
+                    'plot_bytes': plot_bytes
+                })
+            else:
+                self.logger.warning(f"No data found for player: {row['player_name']}")
+        
+        return players_data, latest_date
+    
+    def send_email_report(self, processed_file, underestimated_players):
+        """Send email report with top underestimated players"""
+        self.logger.info("Preparing and sending email report")
+        try:
+            self.validate_email_config()
+            
+            # Read processed data
+            processed_df = pd.read_csv(processed_file)
+            
+            # Prepare report data
+            players_data, report_date = self.prepare_email_report(
+                processed_df, underestimated_players
+            )
+            
+            if not players_data:
+                self.logger.warning("No player data to report")
+                return
+            
+            # Initialize emailer and send report
+            emailer = BaseballReportEmailer(
+                self.email_config['smtp_server'],
+                self.email_config['smtp_port'],
+                self.email_config['sender_email'],
+                self.email_config['sender_password']
+            )
+            
+            emailer.send_report(
+                self.email_config['recipients'],
+                players_data,
+                report_date
+            )
+            
+            self.logger.info(f"Email report sent successfully for {report_date}")
             
         except Exception as e:
-            self.logger.error(f"Error generating plots: {e}")
+            self.logger.error(f"Error sending email report: {e}")
             raise
 
 def main():
@@ -116,6 +200,9 @@ def main():
     parser.add_argument("--start-date", required=True, help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", required=True, help="End date (YYYY-MM-DD)")
     parser.add_argument("--force-refresh", action="store_true", help="Force refresh existing data")
+    parser.add_argument("--skip-email", action="store_true", help="Skip sending email report")
+    parser.add_argument("--test-email", action="store_true",
+                      help="Send test email regardless of game day")
     
     args = parser.parse_args()
     
@@ -123,12 +210,41 @@ def main():
         # Initialize and run workflow
         workflow = BaseballDataWorkflow()
         
+        # Check if it's a game day (if end_date is today)
+        today = date.today().strftime('%Y-%m-%d')
+        is_game_day = args.test_email or (
+            args.end_date == today and workflow.season.is_game_day(date.today())
+        )
+        
         # Execute workflow steps
-        raw_data_file = workflow.fetch_data(args.start_date, args.end_date, args.force_refresh)
+        raw_data_file = workflow.fetch_data(
+            args.start_date, args.end_date, args.force_refresh
+        )
+        
         if raw_data_file:
             processed_file = workflow.process_data(raw_data_file)
             if processed_file:
-                workflow.generate_plots(processed_file)
+                # Analyze rankings
+                underestimated, overestimated = workflow.analyze_rankings(processed_file)
+                
+                # Save rankings
+                rankings_date = args.end_date.replace('-', '')
+                underestimated.to_csv(
+                    f'data/rankings/underestimated_players_{rankings_date}.csv', 
+                    index=False
+                )
+                overestimated.to_csv(
+                    f'data/rankings/overestimated_players_{rankings_date}.csv', 
+                    index=False
+                )
+                
+                # Send email report if it's a game day and email is not skipped
+                if is_game_day and not args.skip_email:
+                    workflow.send_email_report(processed_file, underestimated)
+                elif not is_game_day:
+                    workflow.logger.info("Skipping email report - not a game day")
+                else:
+                    workflow.logger.info("Skipping email report - --skip-email flag set")
                 
     except Exception as e:
         logging.error(f"Workflow failed: {str(e)}")

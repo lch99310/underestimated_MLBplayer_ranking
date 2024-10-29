@@ -51,20 +51,22 @@ class MLBSeasonSchedule:
             return today if self.is_game_day(today) else None
 
 class BaseballReportEmailer:
-    def __init__(self, smtp_server: str, smtp_port: int, sender_email: str, sender_password: str):
+    def __init__(self, smtp_server: str, smtp_port: int, sender_email: str, sender_password: str, from_address: str = None):
         """
         Initialize the emailer with SMTP settings.
         
         Args:
             smtp_server (str): SMTP server address
             smtp_port (int): SMTP port
-            sender_email (str): Sender's email address
-            sender_password (str): Sender's email password
+            sender_email (str): Sender's email address (API token for Postmark)
+            sender_password (str): Sender's password (API token for Postmark)
+            from_address (str): Verified sender address for Postmark
         """
         self.smtp_server = smtp_server
         self.smtp_port = smtp_port
         self.sender_email = sender_email
         self.sender_password = sender_password
+        self.from_address = from_address
 
     def create_player_plot(self, player_data: pd.DataFrame) -> io.BytesIO:
         """
@@ -116,17 +118,13 @@ class BaseballReportEmailer:
     def send_report(self, recipients: List[str], players_data: List[Dict], 
                    date: str) -> None:
         """
-        Send the email report.
-        
-        Args:
-            recipients (List[str]): List of recipient email addresses
-            players_data (List[Dict]): List of player statistics
-            date (str): Report date
+        Send the email report using Postmark.
         """
         msg = MIMEMultipart('related')
         msg['Subject'] = f'MLB Underestimated Players Report - {date}'
-        msg['From'] = self.sender_email
+        msg['From'] = self.from_address
         msg['To'] = ', '.join(recipients)
+        msg['X-Postmark-Server-Token'] = self.sender_email
 
         # Create HTML content
         html_content = self.format_email_html(date, players_data)
@@ -138,20 +136,36 @@ class BaseballReportEmailer:
             img.add_header('Content-ID', f'<player_plot_{i}>')
             msg.attach(img)
 
-        # Send email with retry logic
+        # Send email with retry logic and debug information
         max_retries = 3
-        retry_delay = 300  # 5 minutes
+        retry_delay = 30  # 30 seconds between retries
         
         for attempt in range(max_retries):
             try:
+                print(f"\nAttempt {attempt + 1} to send email:")
+                print(f"Connecting to {self.smtp_server}:{self.smtp_port}")
+                
                 with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                    print("Connected successfully")
+                    server.set_debuglevel(1)  # Enable debug output
+                    
+                    print("Starting TLS")
                     server.starttls()
+                    print("TLS started")
+                    
+                    print("Attempting login with Postmark API token")
                     server.login(self.sender_email, self.sender_password)
+                    print("Login successful")
+                    
+                    print("Sending message")
                     server.send_message(msg)
-                break
+                    print("Message sent successfully!")
+                    break
+                    
             except Exception as e:
+                print(f"\nError details: {str(e)}")
                 if attempt == max_retries - 1:
                     raise
-                print(f"Email sending failed, attempt {attempt + 1}. Retrying in {retry_delay} seconds...")
+                print(f"Retrying in {retry_delay} seconds...")
                 import time
                 time.sleep(retry_delay)

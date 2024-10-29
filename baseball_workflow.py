@@ -18,6 +18,8 @@ from baseball_ranking import analyze_player_estimations
 from baseball_email_report import BaseballReportEmailer, MLBSeasonSchedule
 
 class BaseballDataWorkflow:
+# Update the email_config in baseball_workflow.py's __init__ method:
+
     def __init__(self):
         """Initialize the workflow with simplified directory structure"""
         # Setup directory structure
@@ -41,13 +43,14 @@ class BaseballDataWorkflow:
         # Initialize season schedule
         self.season = MLBSeasonSchedule(datetime.now().year)
         
-        # Email configuration (Mailtrap)
+        # Email configuration (Postmark)
         self.email_config = {
-            'smtp_server': 'sandbox.smtp.mailtrap.io',
-            'smtp_port': 2525,
-            'sender_email': '9536d3126ecfd3',
-            'sender_password': 'e94ea6948a9c57',
-            'recipients': ['lch99310@gmail.com']
+            'smtp_server': 'smtp.postmarkapp.com',
+            'smtp_port': 587,
+            'sender_email': '2eef09f5-6e2d-4b31-a034-0b33b7754e10',  # API Token as username
+            'sender_password': '2eef09f5-6e2d-4b31-a034-0b33b7754e10',  # API Token as password
+            'from_address': 'chunghao_lee@wistron.com',  # Your verified sender address
+            'recipients': ['lch99310@gmail.com']  # Where you want to receive the reports
         }
     
     def validate_email_config(self):
@@ -179,7 +182,8 @@ class BaseballDataWorkflow:
                 self.email_config['smtp_server'],
                 self.email_config['smtp_port'],
                 self.email_config['sender_email'],
-                self.email_config['sender_password']
+                self.email_config['sender_password'],
+                self.email_config['from_address']  # Add this line
             )
             
             emailer.send_report(

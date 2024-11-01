@@ -1,35 +1,35 @@
 {
-  "date": "2024-04-15",
+  "date": "2024-09-30",
   "players": [
     {
-      "player_id": -7140686071002230426,
-      "player_name": "austin wells",
+      "player_id": 7259840396691486645,
+      "player_name": "eddy alvarez",
       "rolling_woba": 0.0,
-      "diff_rolling_OBA": 29.18
+      "diff_rolling_OBA": 14.34
     },
     {
-      "player_id": -7051483245251239670,
-      "player_name": "trent grisham",
+      "player_id": 2776960868860715224,
+      "player_name": "j. d. martinez",
       "rolling_woba": 0.0,
-      "diff_rolling_OBA": 23.55
+      "diff_rolling_OBA": 8.73
     },
     {
-      "player_id": 3794247448955032921,
-      "player_name": "austin hays",
+      "player_id": -385797565489384117,
+      "player_name": "harrison bader",
       "rolling_woba": 0.0,
-      "diff_rolling_OBA": 17.17
+      "diff_rolling_OBA": 5.57
     },
     {
-      "player_id": -6625542710712509740,
-      "player_name": "lawrence butler",
+      "player_id": -6157184748928226339,
+      "player_name": "luis torrens",
       "rolling_woba": 0.0,
-      "diff_rolling_OBA": 13.42
+      "diff_rolling_OBA": 3.73
     },
     {
-      "player_id": 8154431900801659780,
-      "player_name": "adam duvall",
+      "player_id": 3555565764985844558,
+      "player_name": "sean murphy",
       "rolling_woba": 0.7,
-      "diff_rolling_OBA": 12.49
+      "diff_rolling_OBA": 3.23
     }
   ]
 }

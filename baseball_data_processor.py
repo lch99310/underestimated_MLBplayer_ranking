@@ -6,11 +6,7 @@ def process_baseball_data(file_path):
     Process baseball statistics data with the following steps:
     1. Reorganize name columns
     2. Calculate differential OBA (xwOBA - wOBA)
-    3. Calculate 100 PA rolling statistics for each batter:
-       - rolling diff_OBA
-       - rolling xwOBA
-       - rolling wOBA
-       - diff_rolling_OBA (rolling_xwOBA - rolling_wOBA)
+    3. Calculate 100 PA rolling statistics for each batter
     
     Args:
         file_path (str): Path to the CSV file containing baseball data
@@ -19,49 +15,38 @@ def process_baseball_data(file_path):
         pandas.DataFrame: Processed baseball statistics
     """
     # Read the CSV file
-    df = pd.read_csv(file_path)
-    
-    # 1. Move first_name and last_name next to batter
-    # First, get all column names
-    cols = df.columns.tolist()
-    # Remove first_name and last_name from their current position
-    cols.remove('first_name')
-    cols.remove('last_name')
-    # Insert them after 'batter'
-    batter_idx = cols.index('batter')
-    cols.insert(batter_idx + 1, 'first_name')
-    cols.insert(batter_idx + 2, 'last_name')
-    # Reorder the DataFrame
-    df = df[cols]
-    
-    # 2. Calculate diff_OBA (xwOBA - wOBA)
-    # Note: estimated_woba_using_speedangle is xwOBA
-    df['diff_OBA'] = df['estimated_woba_using_speedangle'] - df['woba_value']
-    
-    # 3. Calculate rolling statistics for each batter
-    # Sort by batter and date to ensure correct rolling calculation
-    df = df.sort_values(['batter', 'game_date'])
-    
-    # Function to calculate rolling average
-    def calculate_rolling_stats(group):
-        # Calculate rolling diff_OBA
-        group['rolling_100PA_diff_OBA'] = group['diff_OBA'].rolling(window=100, min_periods=1).mean()
+    try:
+        df = pd.read_csv(str(file_path))  # Convert to string if it's a Path object
         
-        # Calculate rolling xwOBA
-        group['rolling_100PA_xwOBA'] = group['estimated_woba_using_speedangle'].rolling(window=100, min_periods=1).mean()
+        # 1. Move first_name and last_name next to batter
+        cols = df.columns.tolist()
+        cols.remove('first_name')
+        cols.remove('last_name')
+        batter_idx = cols.index('batter')
+        cols.insert(batter_idx + 1, 'first_name')
+        cols.insert(batter_idx + 2, 'last_name')
+        df = df[cols]
         
-        # Calculate rolling wOBA
-        group['rolling_100PA_wOBA'] = group['woba_value'].rolling(window=100, min_periods=1).mean()
+        # 2. Calculate diff_OBA (xwOBA - wOBA)
+        df['diff_OBA'] = df['estimated_woba_using_speedangle'] - df['woba_value']
         
-        # Calculate diff_rolling_OBA (difference between rolling xwOBA and rolling wOBA)
-        group['diff_rolling_OBA'] = group['rolling_100PA_xwOBA'] - group['rolling_100PA_wOBA']
+        # 3. Calculate rolling statistics for each batter
+        df = df.sort_values(['batter', 'game_date'])
         
-        return group
-    
-    # Apply rolling calculations for each batter
-    df = df.groupby('batter', group_keys=False).apply(calculate_rolling_stats)
-    
-    return df
+        def calculate_rolling_stats(group):
+            group['rolling_100PA_diff_OBA'] = group['diff_OBA'].rolling(window=100, min_periods=1).mean()
+            group['rolling_100PA_xwOBA'] = group['estimated_woba_using_speedangle'].rolling(window=100, min_periods=1).mean()
+            group['rolling_100PA_wOBA'] = group['woba_value'].rolling(window=100, min_periods=1).mean()
+            group['diff_rolling_OBA'] = group['rolling_100PA_xwOBA'] - group['rolling_100PA_wOBA']
+            return group
+        
+        df = df.groupby('batter', group_keys=False).apply(calculate_rolling_stats)
+        
+        return df
+        
+    except Exception as e:
+        print(f"Error processing data: {e}")
+        raise
 
 def main():
     """

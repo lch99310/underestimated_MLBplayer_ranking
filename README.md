@@ -1,9 +1,8 @@
 # MLB Undervalued Player Analyzer
 ![Screenshot](shohei_ohtani_stats.png)
+![Screenshot](screenshot_underestimated_players.png)
 
 A data-driven analytics tool that identifies undervalued MLB players by analyzing the gap between actual and expected performance metrics. This project helps teams and analysts discover players who are performing above expectations but might be flying under the radar.
-
-![Project Demo](underestimated_players_demo.gif)
 
 ## What This Project Does
 
@@ -78,7 +77,7 @@ The system produces:
 - Performance trend visualizations
 - Web-based dashboard interface
 
-![Screenshot](screenshot_underestimated_players.png)
+![Project Demo](underestimated_players_demo.gif)
 
 ## Current Limitations
 

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pandas
+numpy
+matplotlib
+python-multipart
+python-dateutil
+requests
+aiofiles

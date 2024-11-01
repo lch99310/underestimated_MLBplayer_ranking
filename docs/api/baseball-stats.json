@@ -1,0 +1,35 @@
+{
+  "date": "2024-04-15",
+  "players": [
+    {
+      "player_id": -7140686071002230426,
+      "player_name": "austin wells",
+      "rolling_woba": 0.0,
+      "diff_rolling_OBA": 29.18
+    },
+    {
+      "player_id": -7051483245251239670,
+      "player_name": "trent grisham",
+      "rolling_woba": 0.0,
+      "diff_rolling_OBA": 23.55
+    },
+    {
+      "player_id": 3794247448955032921,
+      "player_name": "austin hays",
+      "rolling_woba": 0.0,
+      "diff_rolling_OBA": 17.17
+    },
+    {
+      "player_id": -6625542710712509740,
+      "player_name": "lawrence butler",
+      "rolling_woba": 0.0,
+      "diff_rolling_OBA": 13.42
+    },
+    {
+      "player_id": 8154431900801659780,
+      "player_name": "adam duvall",
+      "rolling_woba": 0.7,
+      "diff_rolling_OBA": 12.49
+    }
+  ]
+}

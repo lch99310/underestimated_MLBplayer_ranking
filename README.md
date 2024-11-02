@@ -1,8 +1,8 @@
-# MLB Undervalued Player Analyzer
+# MLB Underestimated Player Analyzer
 ![Screenshot](shohei_ohtani_stats.png)
 ![Screenshot](screenshot_underestimated_players.png)
 
-A data-driven analytics tool that identifies undervalued MLB players by analyzing the gap between actual and expected performance metrics. This project helps teams and analysts discover players who are performing above expectations but might be flying under the radar.
+A data-driven analytics tool that identifies underestimated MLB players by analyzing the gap between actual (wOBA) and expected (xwOBA) performance metrics. This project helps teams and analysts discover players who are performing above expectations but might be flying under the radar.
 
 ## What This Project Does
 
@@ -25,14 +25,14 @@ This project analyzes MLB player performance using three key metrics:
 - Measures the difference between rolling wOBA and xwOBA over 100 plate appearances
 - Positive values: Player is outperforming expectations
 - Negative values: Player is underperforming expectations
-- Helps identify players whose true talent level might be undervalued
+- Helps identify players whose true talent level might be underestimated
 
 ## Development Process
 
 This project was developed through human-AI collaboration:
 
 1. **Problem Definition & Planning**
-   - I identified the need for undervalued player analysis
+   - I identified the need for underestimated player analysis
    - Specified the required metrics (wOBA, xwOBA, diff_rolling_OBA)
    - Outlined desired visualizations and functionalities
 
@@ -66,7 +66,7 @@ This iterative collaboration combined AI's coding capabilities with human baseba
 
 ### baseball_ranking.py
 - Calculates player rankings
-- Identifies undervalued players
+- Identifies underestimated players
 - Generates performance differentials
 - Produces daily leaderboards
 
